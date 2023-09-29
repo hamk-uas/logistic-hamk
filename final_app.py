@@ -1,5 +1,7 @@
-#This app is workind together with 
+#This is DRAFT
+#App is working together with simulation VM
 import json
+import io
 import os
 import streamlit as st
 from geopy.geocoders import Nominatim
@@ -16,13 +18,12 @@ from azure.mgmt.compute import ComputeManagementClient #To start/stop VM
 import folium
 from streamlit_folium import st_folium, folium_static
 
-# Set page title
+# Page title
 st.title("Älykkäät Tyhjentaminen App")
-# Add instructions for the user
+# Instructions for the user
 st.write("First, you need to choose in sidebar menu how you want to provide input data:  \n  1)Random Addresses Generator: enter the numbers and area (rectangle) to generate random addresses  \n  2)Manually type the addresses and optionally names for the places  \n  3)Addresses from your CSV: upload your CSV file with location data and select the corresponding column (columns)  \n  Save all files to the Azure and press start")
 
 st.sidebar.image(".streamlit/Smart_research_unit_violet_150.png",use_column_width=True)
-
 
 
 def generate_random_coordinates(left_up, right_down, num_places):
@@ -47,10 +48,10 @@ generator_choice = st.sidebar.radio("Choose a Generator of addresses:", ("Random
 
 generator_choice_depots = st.sidebar.radio("Choose a Generator of Depot addresses:", ("Random Depot Addresses Generator", "Manually Addresses to Coordinates Converter", "Depot addresses from CSV"))
 
-# Generate a unique filename with a timestamp
+ Generate a unique filename with a timestamp
 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 json_filename = f"input_data_{timestamp}.json"
-# Fetch the Azure Blob Storage connection string from Azure Key Vault using DefaultAzureCredential
+ Fetch the Azure Blob Storage connection string from Azure Key Vault using DefaultAzureCredential
 vault_url = "https://keyvaultforhamk.vault.azure.net/"
 secret_name = "inputdatatoazureblob"  # Replace with the name of your secret
 credential = DefaultAzureCredential()
@@ -76,7 +77,7 @@ with col2:
     num_breaks_per_shift = st.number_input("Numbers of brakes per shift", min_value=1, step=1)
     pickup_duration = st.number_input("Pickup duration  time, Minutes", min_value=1, step=1) 
 
-# Show a "Save Input Data" button
+# A "Save Input Data" button
 if st.button("Save Input Data to blob"):
     # Create a dictionary to store the input data
     input_data = {
@@ -276,7 +277,7 @@ if generator_choice == "Addresses from your CSV":
             address_col = st.selectbox("Select the column that corresponds to address", column_names)
         else:
             st.text(column_names)
-            address_cols_input = st.text_input("Enter all column names(case-sensitive) for the address (comma-separated). Address in order: Street,City,Country", placeholder="like: Column1,column2,column3...", key="0")  # Provide example inside placeholder
+            address_cols_input = st.text_input("Enter all column names(case-sensitive) for the address (comma-separated). Address in order: Street,City,Country", placeholder="like: Column1,column2,column3...", key="0")  
             address_cols = [col.strip() for col in address_cols_input.split(",")]
             address_col = None  #below
 
@@ -330,7 +331,7 @@ if generator_choice == "Addresses from your CSV":
 # Generate a filename
 json_filename = "sim_test_terminals.geojson"
 
-# Fetch the Azure Blob Storage connection string from Azure Key Vault using DefaultAzureCredential
+# Fetching the Azure Blob Storage connection string from Azure Key Vault using DefaultAzureCredential
 vault_url = "https://keyvaultforhamk.vault.azure.net/"
 secret_name = "inputdatatoazureblob"  # Replace with the name of your secret
 credential = DefaultAzureCredential()
@@ -593,9 +594,9 @@ subscription_id = key_vault_secret.value
 resource_group_name = 'data-benchmarking-2'
 vm_name = 'optimizer-hamk'
 
-# Create a Streamlit app
+
 st.title("Press start calculations to continue:")
-# Create two columns
+
 col1, col2 = st.columns(2)
 # Create a button to start the VM
        
@@ -732,26 +733,31 @@ blobs = blob_service_client.get_container_client(container_name).list_blobs()
 blob_names = [blob.name for blob in blobs]
 
 # Dropdown to select a blob
-selected_blob = st.selectbox("Select a File to Download from Azure", blob_names)
+selected_blob = st.selectbox("Select a File to View from Azure", blob_names)
 
-# Input field for specifying the local file path
-local_file_path = st.text_input("Specify Local File Path where to save:", selected_blob)
-if st.button("Download Selected File"):
+# Display the selected blob's contents
+if st.button("View Selected File"):
     try:
-        # Download the selected blob and save it to the specified local file path
+        # Download the selected blob as bytes
         blob_client = blob_service_client.get_blob_client(container=container_name, blob=selected_blob)
         blob_data = blob_client.download_blob()
+        blob_bytes = blob_data.readall()
 
-        # Ensure the user-specified directory exists
-        download_dir = os.path.dirname(local_file_path)
-        os.makedirs(download_dir, exist_ok=True)
+        # Determine content type based on file extension
+        file_extension = os.path.splitext(selected_blob)[1].lower()
+        if file_extension == ".csv":
+            # Read and display CSV directly
+            df = pd.read_csv(io.BytesIO(blob_bytes))
+            st.dataframe(df)
+        elif file_extension == ".json":
+            # Read and display JSON
+            json_content = json.loads(blob_bytes.decode("utf-8"))
+            st.json(json_content)
+        else:
+            st.error("Unsupported file format. Unable to display the file.")
 
-        with open(local_file_path, "wb") as f:
-            f.write(blob_data.readall())
-
-        st.success(f"Downloaded {selected_blob} to {local_file_path}")
     except Exception as e:
-        st.error(f"Error downloading {selected_blob}: {str(e)}")
+        st.error(f"Error viewing {selected_blob}: {str(e)}")
 
     
 

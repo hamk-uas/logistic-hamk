@@ -51,7 +51,7 @@ generator_choice_depots = st.sidebar.radio("Choose a Generator of Depot addresse
 #Generate a unique filename with a timestamp
 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 json_filename = f"input_data_{timestamp}.json"
- Fetch the Azure Blob Storage connection string from Azure Key Vault using DefaultAzureCredential
+#Fetch the Azure Blob Storage connection string from Azure Key Vault using DefaultAzureCredential
 vault_url = "https://keyvaultforhamk.vault.azure.net/"
 secret_name = "inputdatatoazureblob"  # Replace with the name of your secret
 credential = DefaultAzureCredential()
